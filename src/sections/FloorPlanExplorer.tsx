@@ -79,8 +79,8 @@ export default function FloorPlanExplorer() {
 
           <div className="lg:col-span-5" aria-live="polite">
             <div className="relative aspect-[4/3] overflow-hidden bg-forest/10 sm:aspect-[5/4] lg:aspect-[4/5]">
-              <button key={image.id} onClick={() => gallery.open(current.section, image.id)} className="group block h-full w-full" aria-label={`Open ${image.alt} in photo gallery`}>
-                <Photo id={image.id} alt={image.alt} sizes="(min-width: 1024px) 40vw, 100vw" className="h-full w-full" imgClassName="transition-transform duration-[1200ms] ease-[var(--ease-lux)] group-hover:scale-[1.04]" />
+              <button key={image.id} onClick={() => gallery.open(current.section, image.id)} className="group animate-fade-in absolute inset-0 block w-full" aria-label={`Open ${image.alt} in photo gallery`}>
+                <Photo id={image.id} alt={image.alt} sizes="(min-width: 1024px) 40vw, 100vw" className="absolute inset-0 h-full w-full" imgClassName="transition-transform duration-[1200ms] ease-[var(--ease-lux)] group-hover:scale-[1.04]" />
                 <span className="chapter absolute bottom-5 right-5 bg-paper/90 px-4 py-2 text-[9px] text-forest">View photograph ↗</span>
               </button>
             </div>
