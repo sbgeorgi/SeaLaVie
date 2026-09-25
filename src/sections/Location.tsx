@@ -6,12 +6,14 @@ import { cn } from "../utils/cn";
 
 // The first four stops follow the canvas map journey in MVP_example. The final
 // stop replaces its concept footprint with Sea La Vie art from IslandJourney.
+// This illustrative shoreline vertex sits immediately north of Half Moon Bay.
+const SEA_LA_VIE_POINT = [-86.5964, 16.309] as const;
 const STOPS = [
   { name: "Caribbean", number: "01 / THE REGION", title: "Somewhere in the Caribbean.", copy: "A different pace, just beyond the everyday. Follow the journey toward Roatán.", center: [-87.3, 17], width: 1250 },
   { name: "Bay Islands", number: "02 / THE ARCHIPELAGO", title: "The Bay Islands.", copy: "Utila, Roatán and Guanaja: three island worlds beside the Mesoamerican Reef.", center: [-86.47, 16.36], width: 190 },
   { name: "Roatán", number: "03 / THE ISLAND", title: "Beautifully, Roatán.", copy: "A long ribbon of green, fringed with reef. Your own corner of the western Caribbean.", center: [-86.4, 16.365], width: 66 },
-  { name: "West End", number: "04 / THE NEIGHBOURHOOD", title: "West End, a world away.", copy: "The village, beach and dive shops are an easy walk from the quieter Iron Shore.", center: [G.HOME.lon, G.HOME.lat], width: 5.5 },
-  { name: "Sea La Vie", number: "05 / YOUR ARRIVAL", title: "Sea La Vie.", copy: "The oceanfront home, pool and sunset patio. Your journey has found its place.", center: [G.HOME.lon, G.HOME.lat], width: 0.2 },
+  { name: "West End", number: "04 / THE NEIGHBOURHOOD", title: "West End, a world away.", copy: "The village, beach and dive shops are an easy walk from the quieter coast.", center: SEA_LA_VIE_POINT, width: 5.5 },
+  { name: "Sea La Vie", number: "05 / YOUR ARRIVAL", title: "Sea La Vie.", copy: "The oceanfront home, pool and sunset patio. Your journey has found its place.", center: SEA_LA_VIE_POINT, width: 0.2 },
 ] as const;
 
 type Point = readonly [number, number];
@@ -89,14 +91,13 @@ function drawMap(canvas: HTMLCanvasElement, progress: number, mobile: boolean) {
   } else {
     label("West End", [-86.595, 16.305], undefined, undefined, true);
     label("Half Moon Bay", [-86.5968, 16.3072], undefined, undefined, true);
-    label("Iron Shore", [-86.5905, 16.3148], "italic 20px Georgia, serif", "#607d6b");
   }
-  const [px, py] = project([G.HOME.lon, G.HOME.lat]);
+  const [px, py] = project(SEA_LA_VIE_POINT);
   if (px > -40 && px < width + 40 && py > -40 && py < height + 40) {
     ctx.save(); ctx.strokeStyle = "#c07a4f"; ctx.fillStyle = "#1d2b23"; ctx.lineWidth = 1.1;
     ctx.beginPath(); ctx.arc(px, py, widthKm < 9 ? 9 : 15, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-    if (widthKm < 9) label("Sea La Vie", [G.HOME.lon, G.HOME.lat + 0.001], "italic 22px Georgia, serif", "#1d2b23");
+    if (widthKm < 9) label("Sea La Vie", [SEA_LA_VIE_POINT[0], SEA_LA_VIE_POINT[1] + 0.001], "italic 22px Georgia, serif", "#1d2b23");
   }
 }
 
@@ -147,7 +148,7 @@ export default function Location() {
             <h3 className="display mt-2 text-[37px] md:text-[48px]">{stop.title}</h3>
             <p className="mt-3 max-w-sm text-[12px] leading-relaxed text-forest/70 md:mt-5 md:text-[14px]">{stop.copy}</p>
           </div>
-          <p className="chapter mt-4 hidden text-[9px] text-forest/45 md:block">16.3115° N / 86.5927° W · approx.</p>
+          <p className="chapter mt-4 hidden text-[9px] text-forest/45 md:block">16.3090° N / 86.5964° W · illustrative</p>
         </div>
 
         <div className="absolute inset-x-0 bottom-0 border-t border-forest/10 bg-ivory/95 px-4 pb-4 pt-3 backdrop-blur-sm md:px-[6vw] md:pb-6 md:pt-5">
@@ -164,7 +165,7 @@ export default function Location() {
 /** Sea La Vie ending adapted from luxury-scroll-based-villa-website/IslandJourney. */
 function SeaLaVieFinalMap() {
   return (
-    <svg viewBox="0 0 900 650" className="h-full w-full" role="img" aria-label="Illustration of Sea La Vie on the Iron Shore, with two buildings and an oceanfront pool">
+    <svg viewBox="0 0 900 650" className="h-full w-full" role="img" aria-label="Illustration of Sea La Vie on the coast, with two buildings and an oceanfront pool">
       <defs><pattern id="sea-la-vie-grid" width="75" height="75" patternUnits="userSpaceOnUse"><path d="M75 0H0v75" fill="none" stroke="#829c90" strokeWidth=".4" opacity=".26" /></pattern></defs>
       <rect width="900" height="650" fill="#dbe8e3" /><rect width="900" height="650" fill="url(#sea-la-vie-grid)" />
       <path d="M121 0Q99 131 240 202L275 242 309 280 320 322 371 350 397 408 448 438 513 450 561 435 633 444 707 416 767 380 782 323 807 267 900 226V0Z" fill="#d4ddcd" stroke="#718e7b" strokeWidth="1.2" />
@@ -180,7 +181,6 @@ function SeaLaVieFinalMap() {
       <text x="207" y="500" fill="#658579" fontFamily="Cormorant Garamond, Georgia, serif" fontSize="34" fontStyle="italic">Home, by the sea.</text>
       <text x="610" y="366" fill="#526b5c" fontFamily="Manrope, sans-serif" fontSize="11" letterSpacing="2">OCEANFRONT POOL</text>
       <path d="M530 344h65" fill="none" stroke="#7f9d8d" strokeWidth="1" />
-      <text x="227" y="171" fill="#526b5c" fontFamily="Manrope, sans-serif" fontSize="11" letterSpacing="2">THE IRON SHORE</text>
     </svg>
   );
 }
