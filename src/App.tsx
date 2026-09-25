@@ -7,7 +7,7 @@ import Nav from "./sections/Nav";
 import Hero from "./sections/Hero";
 import Intro from "./sections/Intro";
 import DayStory from "./sections/DayStory";
-import Residence from "./sections/Residence";
+import FloorPlanExplorer from "./sections/FloorPlanExplorer";
 import Architecture from "./sections/Architecture";
 import Aerial from "./sections/Aerial";
 import Location from "./sections/Location";
@@ -55,7 +55,7 @@ export default function App() {
         <Hero />
         <Intro />
         <DayStory />
-        <Residence />
+        <FloorPlanExplorer />
         <Architecture />
         <Aerial />
         <Location />

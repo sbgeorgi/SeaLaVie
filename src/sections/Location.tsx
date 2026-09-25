@@ -1,303 +1,186 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { useSectionProgress, useIsMobile, smooth, clamp } from "../lib/hooks";
-import * as G from "../data/geo";
+import { useEffect, useRef, useState } from "react";
 import { Chapter } from "../components/ui";
+import { clamp, lerp, scrollToY, smooth, useIsMobile, useSectionProgress } from "../lib/hooks";
+import * as G from "../data/geo";
 import { cn } from "../utils/cn";
 
-const N = G.CHAPTERS.length;
-const lg = Math.log;
+// The first four stops follow the canvas map journey in MVP_example. The final
+// stop replaces its concept footprint with Sea La Vie art from IslandJourney.
+const STOPS = [
+  { name: "Caribbean", number: "01 / THE REGION", title: "Somewhere in the Caribbean.", copy: "A different pace, just beyond the everyday. Follow the journey toward Roatán.", center: [-87.3, 17], width: 1250 },
+  { name: "Bay Islands", number: "02 / THE ARCHIPELAGO", title: "The Bay Islands.", copy: "Utila, Roatán and Guanaja: three island worlds beside the Mesoamerican Reef.", center: [-86.47, 16.36], width: 190 },
+  { name: "Roatán", number: "03 / THE ISLAND", title: "Beautifully, Roatán.", copy: "A long ribbon of green, fringed with reef. Your own corner of the western Caribbean.", center: [-86.4, 16.365], width: 66 },
+  { name: "West End", number: "04 / THE NEIGHBOURHOOD", title: "West End, a world away.", copy: "The village, beach and dive shops are an easy walk from the quieter Iron Shore.", center: [G.HOME.lon, G.HOME.lat], width: 5.5 },
+  { name: "Sea La Vie", number: "05 / YOUR ARRIVAL", title: "Sea La Vie.", copy: "The oceanfront home, pool and sunset patio. Your journey has found its place.", center: [G.HOME.lon, G.HOME.lat], width: 0.2 },
+] as const;
 
-function viewAt(p: number, mobile: boolean) {
-  const t = clamp(p) * (N - 1);
-  const i = Math.min(N - 2, Math.floor(t));
-  const f = t - i;
-  const e = smooth(0.22, 0.86, f);
-  const a = G.CHAPTERS[i], b = G.CHAPTERS[i + 1];
-  const w0 = mobile ? a.spanM : a.span, w1 = mobile ? b.spanM : b.span;
-  const w = Math.exp(lg(w0) + (lg(w1) - lg(w0)) * e);
-  const k = w0 === w1 ? e : (w0 - w) / (w0 - w1);
-  return { lon: a.lon + (b.lon - a.lon) * k, lat: a.lat + (b.lat - a.lat) * k, span: w };
-}
-const band = (w: number, min: number, max: number) =>
-  smooth(lg(Math.max(min, 1e-6) * 0.6), lg(Math.max(min, 1e-6)), lg(w)) * (1 - smooth(lg(max), lg(max * 1.6), lg(w)));
+type Point = readonly [number, number];
+const KM_LAT = 111.32;
+const KM_LON = KM_LAT * Math.cos((G.HOME.lat * Math.PI) / 180);
+const LAND = [G.MAINLAND, G.FLORIDA, G.CUBA, G.JAMAICA, G.HISPANIOLA, G.PUERTO_RICO, G.CAYMAN, G.UTILA, G.GUANAJA, G.ROATAN];
 
-const dms = (v: number, pos: string, neg: string) => {
-  const a = Math.abs(v);
-  const d = Math.floor(a);
-  const m = Math.floor((a - d) * 60);
-  const s = ((a - d) * 3600 - m * 60).toFixed(0).padStart(2, "0");
-  return `${d}°${String(m).padStart(2, "0")}′${s}″${v >= 0 ? pos : neg}`;
-};
+function drawMap(canvas: HTMLCanvasElement, progress: number, mobile: boolean) {
+  const box = canvas.getBoundingClientRect();
+  if (!box.width || !box.height) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelWidth = Math.round(box.width * dpr);
+  const pixelHeight = Math.round(box.height * dpr);
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) { canvas.width = pixelWidth; canvas.height = pixelHeight; }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const width = box.width, height = box.height;
+  const t = clamp(progress, 0, 0.75) * 4;
+  const segment = Math.min(2, Math.floor(t));
+  const local = t - segment;
+  const blend = smooth(0.12, 0.9, local);
+  const a = STOPS[segment], b = STOPS[segment + 1];
+  const lon = lerp(a.center[0], b.center[0], blend);
+  const lat = lerp(a.center[1], b.center[1], blend);
+  const widthKm = Math.exp(lerp(Math.log(a.width), Math.log(b.width), blend));
+  const scale = (width * (mobile ? 0.93 : 0.63)) / widthKm;
+  const originX = width * (mobile ? 0.5 : 0.66);
+  const originY = height * (mobile ? 0.38 : 0.47);
+  const project = ([x, y]: Point): [number, number] => [originX + (x - lon) * KM_LON * scale, originY - (y - lat) * KM_LAT * scale];
 
-function niceDistance(m: number) {
-  const p = Math.pow(10, Math.floor(Math.log10(m)));
-  const n = m / p;
-  return (n >= 5 ? 5 : n >= 2 ? 2 : 1) * p;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#dbe8e3";
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#a9c0b8";
+  for (let x = 16; x < width; x += 28) for (let y = 16; y < height; y += 28) { ctx.globalAlpha = 0.3; ctx.fillRect(x, y, 1, 1); }
+  ctx.globalAlpha = 1;
+
+  const lonMargin = width / (KM_LON * scale), latMargin = height / (KM_LAT * scale);
+  const isVisible = (ring: Point[]) => ring.some(([x, y]) => Math.abs(x - lon) < lonMargin * 1.2 && Math.abs(y - lat) < latMargin * 1.2);
+  const trace = (points: Point[], close = true) => {
+    ctx.beginPath();
+    points.forEach((point, i) => { const [x, y] = project(point); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    if (close) ctx.closePath();
+  };
+  LAND.filter((ring) => isVisible(ring)).forEach((ring) => { trace(ring); ctx.lineJoin = "round"; ctx.lineWidth = 24; ctx.strokeStyle = "#cddfd0"; ctx.stroke(); });
+  LAND.filter((ring) => isVisible(ring)).forEach((ring) => { trace(ring); ctx.lineWidth = 10; ctx.strokeStyle = "#e8eadd"; ctx.stroke(); ctx.fillStyle = "#d5ddca"; ctx.fill(); ctx.lineWidth = 0.8; ctx.strokeStyle = "#97aa98"; ctx.stroke(); });
+
+  if (widthKm < 90) {
+    trace(G.ROAD, false); ctx.lineWidth = 1.5; ctx.strokeStyle = "#657e6d"; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (widthKm < 9) {
+    trace(G.WALK, false); ctx.lineWidth = 2; ctx.strokeStyle = "#c07a4f"; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  const label = (value: string, point: Point, font = "11px Manrope, sans-serif", color = "#526b5c", dot = false) => {
+    const [x, initialY] = project(point);
+    let y = initialY;
+    if (x < 16 || x > width - 16 || y < 20 || y > height - 20) return;
+    ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = font; ctx.fillStyle = color;
+    if (dot) { ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill(); y += 17; }
+    ctx.lineWidth = 4; ctx.strokeStyle = "#e5ede4"; ctx.strokeText(value, x, y); ctx.fillText(value, x, y); ctx.restore();
+  };
+  if (widthKm > 320) {
+    label("MEXICO", [-89.1, 19.5]); label("BELIZE", [-88.65, 17.2]); label("HONDURAS", [-86.65, 14.8]); label("CUBA", [-81.7, 22.3]);
+    label("Caribbean Sea", [-84.6, 18.7], "italic 24px Georgia, serif", "#829c90");
+  } else if (widthKm > 80) {
+    label("UTILA", [-86.93, 16.13], undefined, undefined, true); label("ROATÁN", [-86.39, 16.43], "13px Manrope, sans-serif", undefined, true);
+    label("GUANAJA", [-85.86, 16.5], undefined, undefined, true); label("La Ceiba", [-86.792, 15.779], undefined, undefined, true);
+    label("The Bay Islands", [-86.45, 16.7], "italic 22px Georgia, serif", "#829c90");
+  } else if (widthKm > 9) {
+    label("Roatán", [-86.43, 16.402], "italic 29px Georgia, serif", "#607d6b");
+    label("West End", [-86.595, 16.305], undefined, undefined, true); label("French Harbour", [-86.454, 16.353], undefined, undefined, true);
+    label("Caribbean Sea", [-86.49, 16.24], "italic 22px Georgia, serif", "#829c90");
+  } else {
+    label("West End", [-86.595, 16.305], undefined, undefined, true);
+    label("Half Moon Bay", [-86.5968, 16.3072], undefined, undefined, true);
+    label("Iron Shore", [-86.5905, 16.3148], "italic 20px Georgia, serif", "#607d6b");
+  }
+  const [px, py] = project([G.HOME.lon, G.HOME.lat]);
+  if (px > -40 && px < width + 40 && py > -40 && py < height + 40) {
+    ctx.save(); ctx.strokeStyle = "#c07a4f"; ctx.fillStyle = "#1d2b23"; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(px, py, widthKm < 9 ? 9 : 15, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    if (widthKm < 9) label("Sea La Vie", [G.HOME.lon, G.HOME.lat + 0.001], "italic 22px Georgia, serif", "#1d2b23");
+  }
 }
 
 export default function Location() {
   const section = useRef<HTMLElement>(null);
-  const box = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ w: 1200, h: 800 });
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [sizeTick, setSizeTick] = useState(0);
   const mobile = useIsMobile();
-  const p = useSectionProgress(section);
+  const progress = useSectionProgress(section);
+  const active = Math.min(4, Math.round(progress * 4));
+  const stop = STOPS[active];
+  const finalOpacity = smooth(0.8, 0.91, progress);
 
   useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSize({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    return () => ro.disconnect();
+    const node = canvas.current;
+    if (!node) return;
+    const observer = new ResizeObserver(() => setSizeTick((tick) => tick + 1));
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
+  useEffect(() => { if (canvas.current) drawMap(canvas.current, progress, mobile); }, [progress, mobile, sizeTick]);
 
-  const v = viewAt(p, mobile);
-  const [cx, cy] = G.proj(v.lon, v.lat);
-  const vbW = G.spanToUnits(v.span);
-  const vbH = (vbW * size.h) / size.w;
-  const vb = `${cx - vbW / 2} ${cy - vbH / 2} ${vbW} ${vbH}`;
-  const pxPerUnit = size.w / vbW;
-  const toScreen = (lon: number, lat: number) => {
-    const [x, y] = G.proj(lon, lat);
-    return [(x - (cx - vbW / 2)) * pxPerUnit, (y - (cy - vbH / 2)) * pxPerUnit];
+  const goTo = (index: number) => {
+    const node = section.current;
+    if (!node) return;
+    const top = node.getBoundingClientRect().top + window.scrollY;
+    scrollToY(top + (node.offsetHeight - window.innerHeight) * (index / 4));
   };
 
-  const chapterIdx = Math.min(N - 1, Math.round(clamp(p) * (N - 1)));
-  const ch = G.CHAPTERS[chapterIdx];
-
-  const meters = niceDistance((110 / pxPerUnit) * G.METERS_PER_UNIT);
-  const barPx = (meters / G.METERS_PER_UNIT) * pxPerUnit;
-  const scaleLabel = meters >= 1000 ? `${(meters / 1000).toLocaleString()} km` : `${meters} m`;
-  const w = v.span;
-
-  const [hx, hy] = toScreen(G.HOME.lon, G.HOME.lat);
-  const homeO = band(w, 0, 4);
-
   return (
-    <section id="location" ref={section} aria-labelledby="loc-title" className="relative bg-forest-deep text-ivory" style={{ height: mobile ? "540svh" : "620vh" }}>
+    <section id="location" ref={section} aria-labelledby="loc-title" className="relative bg-seaglass" style={{ height: mobile ? "480svh" : "520vh" }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden">
-        <div ref={box} className="absolute inset-0" role="img" aria-label={`Illustrated map, ${ch.title}. ${ch.copy}`}>
-          <svg viewBox={vb} preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full" aria-hidden>
-            <MapLayers w={w} />
-          </svg>
-          {/* vignette */}
-          <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(ellipse at 50% 50%, transparent 45%, rgba(18,28,22,.55) 100%)" }} />
+        <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label={`Illustrated map journey: ${stop.name}`} />
+        <div className="pointer-events-none absolute inset-0 hidden md:block" style={{ background: "linear-gradient(90deg, rgba(244,239,230,.97), rgba(244,239,230,.89) 27%, transparent 58%)" }} />
+        <div className="pointer-events-none absolute inset-0 md:hidden" style={{ background: "linear-gradient(0deg, rgba(244,239,230,.7), transparent 70%)" }} />
+        <div className="pointer-events-none absolute inset-x-0 top-[8svh] h-[50svh] transition-opacity duration-700 md:inset-y-0 md:left-[38%] md:right-0 md:h-full" style={{ opacity: finalOpacity }} aria-hidden><SeaLaVieFinalMap /></div>
 
-          {/* labels */}
-          <div aria-hidden className="pointer-events-none absolute inset-0">
-            {G.LABELS.map((l) => {
-              const o = band(w, l.min, l.max);
-              if (o < 0.02) return null;
-              const [x, y] = toScreen(l.lon, l.lat);
-              return (
-                <div key={l.id} className="absolute left-0 top-0" style={{ transform: `translate3d(${x}px, ${y}px, 0)`, opacity: o }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2 text-center">
-                    {l.kind === "sea" ? (
-                      <span className="whitespace-nowrap font-serif text-base italic tracking-wide text-forest/60 md:text-xl">{l.name}</span>
-                    ) : l.kind === "place" ? (
-                      <span className="whitespace-nowrap font-serif text-lg text-forest md:text-2xl">{l.name}</span>
-                    ) : (
-                      <span className="flex flex-col items-center">
-                        <span className="mb-1 h-1.5 w-1.5 rounded-full bg-forest" />
-                        <span className="chapter whitespace-nowrap text-[9px] text-forest md:text-[10px]">{l.name}</span>
-                        {l.sub && <span className="whitespace-nowrap font-serif text-sm italic text-forest/60">{l.sub}</span>}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {homeO > 0.02 && (
-              <div className="absolute left-0 top-0" style={{ transform: `translate3d(${hx}px, ${hy}px, 0)`, opacity: homeO }}>
-                <span className="absolute -left-5 -top-5 h-10 w-10 animate-ping rounded-full bg-ember/30 [animation-duration:2.6s]" />
-                <span className="absolute -left-[7px] -top-[7px] h-3.5 w-3.5 rounded-full border-2 border-ivory bg-ember shadow" />
-                <span className="absolute left-4 top-[-10px] whitespace-nowrap font-serif text-lg italic text-forest md:text-2xl">Sea La Vie</span>
-              </div>
-            )}
-          </div>
+        <div className="pointer-events-none absolute right-5 top-20 hidden text-center text-forest/65 md:block" aria-hidden>
+          <span className="chapter text-[9px]">N</span>
+          <svg viewBox="0 0 30 45" className="mt-1 h-11 w-8"><path d="M15 0 26 37 15 30 4 37Z" fill="none" stroke="currentColor" strokeWidth="1" /><path d="M15 0v30L4 37Z" fill="currentColor" /></svg>
         </div>
 
-        {/* instruments */}
-        <div className="pointer-events-none absolute right-4 top-20 flex flex-col items-end gap-4 text-forest md:right-10 md:top-28">
-          <Compass rot={Math.sin(p * 9) * 6 * (1 - p)} />
-          <div className="text-right">
-            <p className="chapter text-[9px] text-forest/70" aria-hidden>
-              {dms(v.lat, "N", "S")}
-            </p>
-            <p className="chapter text-[9px] text-forest/70" aria-hidden>
-              {dms(v.lon, "E", "W")}
-            </p>
+        <div className="absolute inset-x-4 bottom-[7.5rem] max-w-md border border-forest/10 bg-ivory/95 p-5 text-forest shadow-[0_20px_50px_-35px_rgba(18,28,22,.6)] backdrop-blur-sm md:inset-x-auto md:bottom-auto md:left-[6vw] md:top-1/2 md:w-[34vw] md:max-w-[500px] md:-translate-y-1/2 md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+          <Chapter n="IV">A Sense of Place</Chapter>
+          <h2 id="loc-title" className="display mt-3 hidden text-[42px] md:block md:text-[58px] lg:text-[74px]">Not just an address.<br /><em>A little escape.</em></h2>
+          <div key={stop.number} className="animate-fade-in" aria-live="polite" aria-atomic="true">
+            <p className="chapter mt-4 text-[9px] text-ember md:mt-10">{stop.number}</p>
+            <h3 className="display mt-2 text-[37px] md:text-[48px]">{stop.title}</h3>
+            <p className="mt-3 max-w-sm text-[12px] leading-relaxed text-forest/70 md:mt-5 md:text-[14px]">{stop.copy}</p>
           </div>
-          <div className="flex flex-col items-end" aria-hidden>
-            <div className="flex h-2 items-end border-x border-b border-forest/70" style={{ width: barPx }}>
-              <span className="h-full w-1/2 border-r border-forest/70 bg-forest/70" />
-            </div>
-            <span className="chapter mt-1 text-[9px] text-forest/70">{scaleLabel}</span>
-          </div>
+          <p className="chapter mt-4 hidden text-[9px] text-forest/45 md:block">16.3115° N / 86.5927° W · approx.</p>
         </div>
 
-        {/* chapter rail */}
-        <ol className="absolute left-4 top-1/2 hidden -translate-y-1/2 flex-col gap-3 md:left-10 md:flex" aria-label="Map chapters">
-          {G.CHAPTERS.map((c, i) => (
-            <li key={c.key} className={cn("flex items-center gap-3 transition-all duration-700", i === chapterIdx ? "text-forest" : "text-forest/35")} aria-current={i === chapterIdx ? "step" : undefined}>
-              <span className={cn("h-px bg-current transition-all duration-700", i === chapterIdx ? "w-10" : "w-4")} />
-              <span className="chapter text-[9px]">{c.n}</span>
-            </li>
-          ))}
-        </ol>
-
-        {/* copy card */}
-        <div className={cn("absolute z-10", mobile ? "inset-x-4 bottom-5" : "bottom-12 right-10 w-[420px] lg:right-16")}>
-          <div className="relative overflow-hidden rounded-[2px] bg-ivory/90 p-6 text-forest shadow-[0_30px_80px_-40px_rgba(0,0,0,.5)] backdrop-blur-md md:p-9">
-            <Chapter n="IV">Location</Chapter>
-            <h2 id="loc-title" className="sr-only">
-              Location — from the Caribbean to the Iron Shore
-            </h2>
-            <div key={ch.key} className="animate-fade-in" aria-live="polite">
-              <p className="mt-4 font-serif text-sm italic text-ember">
-                {ch.n} — {ch.kicker}
-              </p>
-              <p className="display mt-2 text-[40px] md:text-6xl">{ch.title}</p>
-              <p className="mt-3 text-[13.5px] leading-relaxed text-forest/70 md:mt-4 md:text-[14.5px]">{ch.copy}</p>
-            </div>
-            <div className="mt-5 h-px w-full bg-forest/10">
-              <div className="h-full bg-ember transition-[width] duration-300" style={{ width: `${p * 100}%` }} />
-            </div>
-          </div>
+        <div className="absolute inset-x-0 bottom-0 border-t border-forest/10 bg-ivory/95 px-4 pb-4 pt-3 backdrop-blur-sm md:px-[6vw] md:pb-6 md:pt-5">
+          <nav className="grid grid-cols-5 gap-1 md:gap-5" aria-label="Choose a stage of the map journey">
+            {STOPS.map((item, index) => <button key={item.name} onClick={() => goTo(index)} aria-pressed={active === index} className={cn("group min-w-0 border-t pt-2 text-left transition-colors md:pt-3", active === index ? "border-forest text-forest" : "border-forest/20 text-forest/45 hover:text-forest")}><span className="block font-serif text-lg italic text-ember md:text-2xl">0{index + 1}</span><span className="chapter mt-1 block truncate text-[8px] tracking-[0.08em] md:text-[10px]">{item.name}</span></button>)}
+          </nav>
+          <p className="mt-3 hidden text-[9px] text-forest/45 md:block">Illustrative journey based on island geography. The Sea La Vie site visual is not a navigation map.</p>
         </div>
       </div>
     </section>
   );
 }
 
-function Compass({ rot }: { rot: number }) {
+/** Sea La Vie ending adapted from luxury-scroll-based-villa-website/IslandJourney. */
+function SeaLaVieFinalMap() {
   return (
-    <svg viewBox="0 0 64 64" className="h-14 w-14 md:h-16 md:w-16" aria-hidden>
-      <circle cx="32" cy="32" r="30" fill="rgba(244,239,230,.6)" stroke="currentColor" strokeOpacity=".35" />
-      <circle cx="32" cy="32" r="24" fill="none" stroke="currentColor" strokeOpacity=".2" strokeDasharray="1 3" />
-      <g style={{ transform: `rotate(${rot}deg)`, transformOrigin: "32px 32px", transition: "transform .6s var(--ease-lux)" }}>
-        <path d="M32 8 36 32 32 56 28 32Z" fill="none" stroke="currentColor" strokeWidth=".8" />
-        <path d="M32 8 36 32H28Z" fill="#c07a4f" />
+    <svg viewBox="0 0 900 650" className="h-full w-full" role="img" aria-label="Illustration of Sea La Vie on the Iron Shore, with two buildings and an oceanfront pool">
+      <defs><pattern id="sea-la-vie-grid" width="75" height="75" patternUnits="userSpaceOnUse"><path d="M75 0H0v75" fill="none" stroke="#829c90" strokeWidth=".4" opacity=".26" /></pattern></defs>
+      <rect width="900" height="650" fill="#dbe8e3" /><rect width="900" height="650" fill="url(#sea-la-vie-grid)" />
+      <path d="M121 0Q99 131 240 202L275 242 309 280 320 322 371 350 397 408 448 438 513 450 561 435 633 444 707 416 767 380 782 323 807 267 900 226V0Z" fill="#d4ddcd" stroke="#718e7b" strokeWidth="1.2" />
+      <path d="M238 211 287 278 311 336 359 370 391 425 445 460 512 471 564 458 638 466 717 437 781 396 801 332 827 280 900 249M252 213 298 266 334 315 384 347 414 391 456 424 512 437 565 420 630 429 699 401 747 367 762 312 786 260" fill="none" stroke="#7f9d8d" strokeWidth="1" opacity=".7" />
+      <g transform="translate(371 197) rotate(-20)">
+        <path d="M0 0h96v131H0zM159 14h96v131h-96z" fill="#567868" stroke="#d4ddcd" strokeWidth="1.5" />
+        <path d="M8 10h80v110H8zM167 24h80v110h-80z" fill="none" stroke="#d4ddcd" strokeWidth=".8" />
+        <path d="M111 123h41v78h-41z" fill="#7bafa5" stroke="#f4efe6" strokeWidth="2" />
+        <path d="M-12 155h79v42h-79zM197 179h47v38h-47z" fill="none" stroke="#d4ddcd" strokeWidth=".8" />
       </g>
-      <text x="32" y="6.5" textAnchor="middle" fontSize="6" fill="currentColor" fontFamily="Manrope" letterSpacing="1">
-        N
-      </text>
+      <g fill="#1d2b23" stroke="#1d2b23"><circle cx="445" cy="246" r="5" /><circle cx="445" cy="246" r="15" fill="none" strokeWidth=".8" /><circle cx="445" cy="246" r="25" fill="none" strokeWidth=".5" opacity=".5" /><path d="M454 237 473 217h75" fill="none" strokeWidth=".8" /></g>
+      <text x="477" y="210" fill="#1d2b23" fontFamily="Cormorant Garamond, Georgia, serif" fontSize="27" fontStyle="italic">Sea La Vie</text>
+      <text x="207" y="500" fill="#658579" fontFamily="Cormorant Garamond, Georgia, serif" fontSize="34" fontStyle="italic">Home, by the sea.</text>
+      <text x="610" y="366" fill="#526b5c" fontFamily="Manrope, sans-serif" fontSize="11" letterSpacing="2">OCEANFRONT POOL</text>
+      <path d="M530 344h65" fill="none" stroke="#7f9d8d" strokeWidth="1" />
+      <text x="227" y="171" fill="#526b5c" fontFamily="Manrope, sans-serif" fontSize="11" letterSpacing="2">THE IRON SHORE</text>
     </svg>
   );
 }
-
-const MapLayers = memo(function MapLayers({ w }: { w: number }) {
-  const paths = useMemo(
-    () => ({
-      main: G.pathOf(G.MAINLAND),
-      fl: G.pathOf(G.FLORIDA),
-      cuba: G.pathOf(G.CUBA),
-      jam: G.pathOf(G.JAMAICA),
-      hisp: G.pathOf(G.HISPANIOLA),
-      pr: G.pathOf(G.PUERTO_RICO),
-      cay: G.pathOf(G.CAYMAN),
-      utila: G.pathOf(G.UTILA),
-      guan: G.pathOf(G.GUANAJA),
-      roatan: G.pathOf(G.ROATAN),
-      road: G.pathOf(G.ROAD, false),
-      walk: G.pathOf(G.WALK, false),
-      reef: G.pathOf(G.REEF_MESO, false),
-    }),
-    [],
-  );
-  const [rtx, rty] = G.proj(-86.523, 16.3168);
-  const routes = useMemo(
-    () =>
-      G.ROUTES.map((r) => {
-        const [x0, y0] = G.proj(r.from[0], r.from[1]);
-        const [x1, y1] = [rtx, rty];
-        const mx = (x0 + x1) / 2, my = (y0 + y1) / 2 - Math.hypot(x1 - x0, y1 - y0) * 0.22;
-        return { d: `M${x0} ${y0}Q${mx} ${my} ${x1} ${y1}`, name: r.name };
-      }),
-    [rtx, rty],
-  );
-  const ns = { vectorEffect: "non-scaling-stroke" as const };
-  const graticule = (step: number, o: number) => {
-    if (o < 0.02) return null;
-    const lines = [];
-    const R = 24;
-    const lonC = Math.round(G.HOME.lon / step) * step;
-    const latC = Math.round(G.HOME.lat / step) * step;
-    const [xa] = G.proj(lonC - R * step, 0), [xb] = G.proj(lonC + R * step, 0);
-    const [, ya] = G.proj(0, latC + R * step), [, yb] = G.proj(0, latC - R * step);
-    for (let i = -R; i <= R; i++) {
-      const [x] = G.proj(lonC + i * step, 0);
-      lines.push(<line key={"x" + i} x1={x} x2={x} y1={ya} y2={yb} {...ns} />);
-      const [, y] = G.proj(0, latC + i * step);
-      lines.push(<line key={"y" + i} x1={xa} x2={xb} y1={y} y2={y} {...ns} />);
-    }
-    return (
-      <g stroke="#1d2b23" strokeOpacity={0.09 * o} strokeWidth="1">
-        {lines}
-      </g>
-    );
-  };
-
-  const oCarib = band(w, 3, 80);
-  const oBay = band(w, 0.3, 6);
-  const oIsland = band(w, 0.004, 1.2);
-  const oLocal = band(w, 0, 0.06);
-  const oSite = band(w, 0, 0.005);
-  const [sx, sy] = [0, 0];
-
-  return (
-    <g>
-      <defs>
-        <radialGradient id="sea" cx="50%" cy="50%" r="80%">
-          <stop offset="0%" stopColor="#dbe8e3" />
-          <stop offset="100%" stopColor="#b9d0c9" />
-        </radialGradient>
-        <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="6" stroke="#1d2b23" strokeOpacity=".08" strokeWidth="1" {...ns} />
-        </pattern>
-      </defs>
-      <rect x="-400000" y="-400000" width="800000" height="800000" fill="url(#sea)" />
-      {graticule(5, band(w, 4, 100))}
-      {graticule(0.5, band(w, 0.4, 4))}
-      {graticule(0.05, band(w, 0.04, 0.5))}
-      {graticule(0.002, band(w, 0.002, 0.04))}
-
-      {/* reef & routes */}
-      <path d={paths.reef} fill="none" stroke="#5f8a83" strokeWidth="1.5" strokeDasharray="2 5" opacity={Math.max(oCarib, oBay) * 0.9} {...ns} />
-      {routes.map((r) => (
-        <path key={r.name} d={r.d} fill="none" stroke="#c07a4f" strokeWidth="1.2" strokeDasharray="5 6" opacity={oCarib} style={{ animation: "dash 2.4s linear infinite" }} {...ns} />
-      ))}
-
-      {/* land */}
-      <g fill="#f4efe6" stroke="#1d2b23" strokeOpacity=".55" strokeWidth="1" strokeLinejoin="round">
-        {[paths.main, paths.fl, paths.cuba, paths.jam, paths.hisp, paths.pr, paths.cay, paths.utila, paths.guan].map((d, i) => (
-          <path key={i} d={d} {...ns} />
-        ))}
-        <path d={paths.roatan} {...ns} />
-      </g>
-      <path d={paths.roatan} fill="url(#hatch)" opacity={oIsland} />
-      {/* ironshore — rocky coastal texture at local zoom */}
-      <path d={paths.roatan} fill="none" stroke="#3d3f3a" strokeWidth="5" strokeDasharray="1.5 3.5" strokeLinecap="round" opacity={oLocal * 0.7} {...ns} />
-      {/* island reef halo */}
-      <path d={paths.roatan} fill="none" stroke="#5f8a83" strokeOpacity=".35" strokeWidth="10" opacity={oIsland * (1 - oLocal)} {...ns} />
-
-      {/* roads & walk */}
-      <path d={paths.road} fill="none" stroke="#1d2b23" strokeOpacity=".35" strokeWidth="1.4" opacity={oIsland} {...ns} />
-      <path d={paths.walk} fill="none" stroke="#c07a4f" strokeWidth="2.5" strokeDasharray="4 5" strokeLinecap="round" opacity={oLocal} style={{ animation: "dash 1.6s linear infinite" }} {...ns} />
-
-      {/* site plan */}
-      <g opacity={oSite} transform={`translate(${sx} ${sy}) rotate(11)`} strokeWidth="1" stroke="#1d2b23">
-        <rect x="-2.3" y="-1.8" width="2.1" height="3.6" fill="#e2d8c6" strokeOpacity=".3" {...ns} />
-        <rect x="-1.85" y="-1.25" width="1.25" height="2.3" fill="#8fd3c9" strokeOpacity=".6" {...ns} />
-        {[-1.4, -0.9, -0.4, 0.1, 0.6].map((y) => (
-          <rect key={y} x="-0.52" y={y} width="0.18" height="0.36" fill="#fbf8f2" strokeOpacity=".4" {...ns} />
-        ))}
-        <circle cx="-2.05" cy="2.2" r="0.38" fill="#c9a877" strokeOpacity=".6" {...ns} />
-        <rect x="0" y="-1.75" width="1.45" height="3.5" fill="#f7f3ec" {...ns} />
-        <path d="M0 -1.75 0.72 -1.05 0.72 1.05 0 1.75M1.45 -1.75 0.72 -1.05M1.45 1.75 0.72 1.05" fill="none" strokeOpacity=".5" {...ns} />
-        <rect x="-0.22" y="-1.75" width="0.22" height="3.5" fill="none" strokeDasharray="2 2" {...ns} />
-        <rect x="0.1" y="2.35" width="1.35" height="3.1" fill="#f7f3ec" strokeOpacity=".4" opacity=".6" {...ns} />
-        <path d="M-2.8 -0.2 -3.8 -0.2" stroke="#c07a4f" strokeWidth="1.4" {...ns} />
-      </g>
-    </g>
-  );
-});

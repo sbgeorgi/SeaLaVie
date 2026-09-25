@@ -138,7 +138,7 @@ export default function Architecture() {
         <div
           className={cn(
             "absolute touch-pan-y select-none",
-            mobile ? "inset-x-0 top-[8svh] h-[58svh]" : "inset-0 cursor-grab active:cursor-grabbing",
+            mobile ? "inset-x-0 top-[max(80px,10svh)] h-[45svh]" : "inset-0 cursor-grab active:cursor-grabbing",
           )}
           onPointerDown={onDown}
           onPointerMove={onMove}
@@ -199,25 +199,25 @@ export default function Architecture() {
         {/* Copy column */}
         <div
           className={cn(
-            "relative z-10 flex h-full flex-col px-6 md:px-12 lg:px-16",
-            mobile ? "justify-end pb-6" : "w-[40%] max-w-[560px] justify-center",
+            "relative z-10 flex flex-col md:h-full md:px-12 lg:px-16",
+            mobile ? "absolute inset-x-0 bottom-0 h-[41svh] overflow-y-auto border-t border-forest/10 bg-ivory/95 px-5 py-4" : "w-[40%] max-w-[560px] justify-center",
           )}
         >
-          <div className={cn(mobile && "rounded-sm bg-ivory/85 p-5 backdrop-blur-md")}>
+          <div>
             <Chapter n="III">Architecture</Chapter>
             <h2 id="arch-title" className="sr-only">
               The architecture of Sea La Vie
             </h2>
-            <div className="relative mt-5 md:mt-8" aria-live="polite" aria-atomic="true">
+            <div className="relative mt-2 md:mt-8" aria-live="polite" aria-atomic="true">
               <div key={idx} className="animate-fade-in">
                 <p className="font-serif text-lg italic text-ember">{s.n} / 05</p>
-                <p className="display mt-1 text-[44px] text-forest sm:text-6xl lg:text-[88px]">{s.title}</p>
-                <p className="mt-4 max-w-md text-[14px] leading-relaxed text-forest/70 md:mt-6 md:text-[15px]">{s.copy}</p>
+                <p className="display mt-1 text-[38px] text-forest sm:text-6xl lg:text-[88px]">{s.title}</p>
+                <p className="mt-2 max-w-md text-[12px] leading-relaxed text-forest/70 md:mt-6 md:text-[15px]">{s.copy}</p>
               </div>
             </div>
 
             {/* stage markers */}
-            <ol className="mt-6 flex gap-2 md:mt-10" aria-label="Model stages">
+            <ol className="mt-3 flex gap-2 md:mt-10" aria-label="Model stages">
               {STAGES.map((st, i) => {
                 const a = STAGES[i].at;
                 const b = STAGES[i + 1]?.at ?? 1;
@@ -247,7 +247,7 @@ export default function Architecture() {
 
             {/* controls */}
             {!failed && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 md:mt-8">
+              <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-8">
                 <CtrlBtn label="Rotate model left" onClick={() => scene.current?.rotate(-1)}>
                   <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2.5V5h2.5" /></svg>
                 </CtrlBtn>
