@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { PICK, img, srcSet, byId } from "../data/photos";
-import { useSectionProgress, clamp, smooth } from "../lib/hooks";
+import { useSectionProgress, useReducedMotion, clamp, smooth } from "../lib/hooks";
 import { useGallery } from "../components/ui";
 
 const FRAMES = [
@@ -13,6 +13,7 @@ const FRAMES = [
 export default function Aerial() {
   const ref = useRef<HTMLElement>(null);
   const p = useSectionProgress(ref);
+  const reduced = useReducedMotion();
   const gallery = useGallery();
   const n = FRAMES.length;
   const seg = p * n;
@@ -22,23 +23,25 @@ export default function Aerial() {
   );
 
   return (
-    <section ref={ref} aria-labelledby="aerial-title" className="relative bg-forest-deep text-ivory" style={{ height: `${n * 95}vh` }}>
+    <section ref={ref} aria-labelledby="aerial-title" className="relative bg-forest-deep text-ivory" style={{ height: `${n * 95}svh` }}>
       <h2 id="aerial-title" className="sr-only">
         Aerial views of Sea La Vie
       </h2>
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         {FRAMES.map((f, i) => {
           const local = seg - i;
-          const o = i === 0 ? 1 : smooth(-0.35, 0.1, local);
-          const s = 1.28 - 0.26 * clamp((local + 0.4) / 1.4);
+          const t = i === 0 ? 1 : reduced ? Number(idx >= i) : smooth(-0.35, 0.15, local);
+          const s = reduced ? 1 : 1.16 - 0.14 * clamp((local + 0.4) / 1.4);
+          const inset = i % 2 ? `inset(0 ${(1 - t) * 100}% 0 0)` : `inset(0 0 0 ${(1 - t) * 100}%)`;
           return (
-            <div key={f.id} className="absolute inset-0" style={{ opacity: o, zIndex: i }}>
+            <div key={f.id} className="absolute inset-0 overflow-hidden" style={{ clipPath: inset, zIndex: i }}>
               <img
                 src={img(f.id, 1920)}
                 srcSet={srcSet(f.id)}
                 sizes="100vw"
                 alt={byId(f.id).alt}
                 loading="lazy"
+                decoding="async"
                 className="absolute inset-0 h-full w-full object-cover will-change-transform"
                 style={{ transform: `scale(${s})` }}
               />
@@ -50,7 +53,7 @@ export default function Aerial() {
         {/* HUD */}
         <div aria-hidden className="absolute inset-x-5 top-24 z-20 flex items-start justify-between md:inset-x-10 md:top-28">
           <p className="chapter text-[9px] text-ivory/70">
-            <span className="text-ember">Aerial</span> &nbsp;·&nbsp; {String(idx + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}
+            <span className="text-ember">V</span> &nbsp;—&nbsp; Aerial &nbsp;·&nbsp; {String(idx + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}
           </p>
           <div className="text-right">
             <p className="chapter text-[9px] text-ivory/60">Altitude</p>
@@ -68,13 +71,13 @@ export default function Aerial() {
         </div>
 
         <div className="absolute inset-x-5 bottom-14 z-20 md:inset-x-10 md:bottom-20">
-          <div className="relative h-[2.3em] text-[40px] sm:text-6xl lg:h-[2.1em] lg:text-[96px]" aria-live="polite">
+          <div className="relative h-[3.1em] text-[clamp(36px,9.6vw,48px)] sm:h-[2.3em] sm:text-6xl lg:h-[2.1em] lg:text-[96px]" aria-live="polite">
             {FRAMES.map((f, i) => (
               <p
                 key={f.id}
                 aria-hidden={idx !== i}
-                className="display absolute inset-x-0 bottom-0 transition-all duration-[1100ms] ease-[var(--ease-lux)]"
-                style={{ opacity: idx === i ? 1 : 0, transform: `translateY(${idx === i ? 0 : idx > i ? -24 : 24}px)`, filter: `blur(${idx === i ? 0 : 6}px)` }}
+                className="display absolute inset-x-0 bottom-0 transition-[opacity,transform] duration-500 ease-[var(--ease-lux)]"
+                style={{ opacity: idx === i ? 1 : 0, transform: `translateY(${reduced || idx === i ? 0 : idx > i ? -14 : 14}px)` }}
               >
                 {f.line}
                 <br />

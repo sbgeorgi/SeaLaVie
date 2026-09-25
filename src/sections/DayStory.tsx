@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { PICK, img, srcSet, byId } from "../data/photos";
-import { useSectionProgress, useIsMobile, clamp, easeOut } from "../lib/hooks";
+import { useSectionProgress, useIsMobile, useReducedMotion, clamp, smooth } from "../lib/hooks";
 import { cn } from "../utils/cn";
 
 const MOMENTS = [
@@ -13,33 +13,36 @@ export default function DayStory() {
   const ref = useRef<HTMLElement>(null);
   const p = useSectionProgress(ref);
   const mobile = useIsMobile();
+  const reduced = useReducedMotion();
   const n = MOMENTS.length;
   const seg = p * n;
   const idx = Math.min(n - 1, Math.floor(seg));
 
   return (
-    <section ref={ref} aria-label="A day at Sea La Vie" className="relative bg-forest-deep text-ivory" style={{ height: `${n * 110}vh` }}>
+    <section ref={ref} aria-label="A day at Sea La Vie" className="relative bg-forest-deep text-ivory" style={{ height: `${n * 110}svh` }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden">
-        {/* stacked images with clip-path wipe */}
-        <div className={cn("absolute", mobile ? "inset-x-0 top-0 h-[62svh]" : "inset-y-0 right-0 w-[64%]")}>
+        {/* Alternating image wipes follow the scroll, as in the MVP story. */}
+        <div className={cn("absolute", mobile ? "inset-0" : "inset-y-0 right-0 w-[64%]")}>
           {MOMENTS.map((m, i) => {
-            const t = i === 0 ? 1 : easeOut(clamp((seg - i + 0.35) / 0.55));
-            const inner = 1.15 - 0.15 * clamp(seg - i + 0.6);
+            const t = i === 0 ? 1 : reduced ? Number(idx >= i) : smooth(i - 0.35, i + 0.2, seg);
+            const inner = reduced ? 1 : 1.12 - 0.12 * clamp(seg - i + 0.6);
+            const inset = i % 2 ? `inset(0 ${(1 - t) * 100}% 0 0)` : `inset(0 0 0 ${(1 - t) * 100}%)`;
             return (
-              <div key={m.id} className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(${(1 - t) * 100}% 0 0 0)`, zIndex: i }}>
+              <div key={m.id} className="absolute inset-0 overflow-hidden" style={{ clipPath: inset, zIndex: i }}>
                 <img
                   src={img(m.id, 1920)}
                   srcSet={srcSet(m.id)}
                   sizes={mobile ? "100vw" : "64vw"}
                   alt={byId(m.id).alt}
                   loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover will-change-transform"
                   style={{ transform: `scale(${inner})` }}
                 />
               </div>
             );
           })}
-          <div aria-hidden className={cn("absolute inset-0 z-10", mobile ? "bg-gradient-to-b from-transparent via-transparent to-forest-deep" : "bg-gradient-to-r from-forest-deep via-forest-deep/10 to-transparent")} />
+          <div aria-hidden className={cn("absolute inset-0 z-10", mobile ? "bg-gradient-to-t from-forest-deep via-forest-deep/45 to-forest-deep/10" : "bg-gradient-to-r from-forest-deep via-forest-deep/10 to-transparent")} />
         </div>
 
         {/* copy */}
@@ -51,8 +54,8 @@ export default function DayStory() {
             {MOMENTS.map((m, i) => (
               <div
                 key={m.title}
-                className="absolute inset-0 transition-all duration-[1100ms] ease-[var(--ease-lux)]"
-                style={{ opacity: idx === i ? 1 : 0, transform: `translateY(${idx === i ? 0 : idx > i ? -30 : 30}px)` }}
+                className="absolute inset-0 transition-[opacity,transform] duration-500 ease-[var(--ease-lux)]"
+                style={{ opacity: idx === i ? 1 : 0, transform: `translateY(${reduced || idx === i ? 0 : idx > i ? -14 : 14}px)` }}
                 aria-hidden={idx !== i}
               >
                 <p className="font-serif text-xl italic text-seaglass">{m.time}</p>

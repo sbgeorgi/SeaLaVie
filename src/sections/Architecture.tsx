@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useSectionProgress, useIsMobile, useReducedMotion, scrollToY } from "../lib/hooks";
+import { useSectionProgress, useIsMobile, useReducedMotion, scrollToY, clamp } from "../lib/hooks";
 import { ROOMS, type VillaScene, type LabelScreen } from "../three/VillaScene";
 import { Chapter } from "../components/ui";
 import { cn } from "../utils/cn";
@@ -62,6 +62,8 @@ export default function Architecture() {
           });
           await s.init();
           if (disposed) return s.dispose();
+          const sceneHeight = sec.firstElementChild instanceof HTMLElement ? sec.firstElementChild.offsetHeight : window.innerHeight;
+          s.progress = clamp(-sec.getBoundingClientRect().top / Math.max(1, sec.offsetHeight - sceneHeight));
           setReady(true);
           vis = new IntersectionObserver(([v]) => s.setActive(v.isIntersecting), { rootMargin: "10% 0px" });
           vis.observe(sec);
@@ -105,7 +107,8 @@ export default function Architecture() {
     const sec = section.current;
     if (!sec) return;
     setPlan(false);
-    const total = sec.offsetHeight - window.innerHeight;
+    const sceneHeight = (sec.firstElementChild as HTMLElement | null)?.offsetHeight ?? window.innerHeight;
+    const total = sec.offsetHeight - sceneHeight;
     const top = sec.getBoundingClientRect().top + window.scrollY;
     scrollToY(top + total * STAGES[i].at);
   };
@@ -137,7 +140,7 @@ export default function Architecture() {
         {/* 3D stage */}
         <div
           className={cn(
-            "absolute touch-pan-y select-none",
+            "architecture-model absolute touch-pan-y select-none",
             mobile ? "inset-x-0 top-[max(80px,10svh)] h-[45svh]" : "inset-0 cursor-grab active:cursor-grabbing",
           )}
           onPointerDown={onDown}
@@ -199,21 +202,24 @@ export default function Architecture() {
         {/* Copy column */}
         <div
           className={cn(
-            "relative z-10 flex flex-col md:h-full md:px-12 lg:px-16",
-            mobile ? "absolute inset-x-0 bottom-0 h-[41svh] overflow-y-auto border-t border-forest/10 bg-ivory/95 px-5 py-4" : "w-[40%] max-w-[560px] justify-center",
+            "architecture-card relative z-10 flex flex-col md:h-full md:px-12 lg:px-16",
+            mobile ? "absolute inset-x-0 bottom-0 h-[41svh] overflow-y-auto overscroll-contain border-t border-forest/10 bg-ivory/95 px-5 py-4" : "w-[40%] max-w-[560px] justify-center",
           )}
+          data-lenis-prevent={mobile ? "" : undefined}
         >
           <div>
             <Chapter n="III">Architecture</Chapter>
             <h2 id="arch-title" className="sr-only">
               The architecture of Sea La Vie
             </h2>
-            <div className="relative mt-2 md:mt-8" aria-live="polite" aria-atomic="true">
-              <div key={idx} className="animate-fade-in">
-                <p className="font-serif text-lg italic text-ember">{s.n} / 05</p>
-                <p className="display mt-1 text-[38px] text-forest sm:text-6xl lg:text-[88px]">{s.title}</p>
-                <p className="mt-2 max-w-md text-[12px] leading-relaxed text-forest/70 md:mt-6 md:text-[15px]">{s.copy}</p>
-              </div>
+            <div className="mt-2 grid md:mt-8" aria-live="polite" aria-atomic="true">
+              {STAGES.map((item, i) => (
+                <div key={item.n} aria-hidden={idx !== i} className="[grid-area:1/1] transition-[opacity,transform] duration-500 ease-[var(--ease-lux)]" style={{ opacity: idx === i ? 1 : 0, transform: `translateY(${idx === i ? 0 : 10}px)` }}>
+                  <p className="font-serif text-lg italic text-ember">{item.n} / 05</p>
+                  <p className="display mt-1 text-[38px] text-forest sm:text-6xl lg:text-[88px]">{item.title}</p>
+                  <p className="mt-2 max-w-md text-[12px] leading-relaxed text-forest/70 md:mt-6 md:text-[15px]">{item.copy}</p>
+                </div>
+              ))}
             </div>
 
             {/* stage markers */}
@@ -255,13 +261,13 @@ export default function Architecture() {
                   <svg viewBox="0 0 16 16" className="h-4 w-4 -scale-x-100" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2.5V5h2.5" /></svg>
                 </CtrlBtn>
                 <CtrlBtn label="Reset view" onClick={() => { scene.current?.reset(); setPlan(false); }}>
-                  <span className="text-[10px] uppercase tracking-[0.2em]">Reset</span>
+                  <span className="text-[9px] uppercase tracking-[0.14em] sm:text-[10px] sm:tracking-[0.2em]">Reset</span>
                 </CtrlBtn>
                 <button
                   onClick={() => setPlan((v) => !v)}
                   aria-pressed={plan}
                   className={cn(
-                    "btn-lux h-11 rounded-full border px-5 text-[10px] uppercase tracking-[0.22em] transition-colors",
+                    "btn-lux h-11 rounded-full border px-3 text-[9px] uppercase tracking-[0.16em] transition-colors sm:px-5 sm:text-[10px] sm:tracking-[0.22em]",
                     plan ? "border-forest bg-forest text-ivory" : "border-forest/25 text-forest hover:text-ivory",
                   )}
                 >
@@ -289,7 +295,7 @@ function CtrlBtn({ label, onClick, children }: { label: string; onClick: () => v
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="btn-lux grid h-11 min-w-11 place-items-center rounded-full border border-forest/25 px-3 text-forest hover:border-forest hover:text-ivory"
+      className="btn-lux grid h-11 min-w-11 place-items-center rounded-full border border-forest/25 px-2 text-forest hover:border-forest hover:text-ivory sm:px-3"
     >
       {children}
     </button>

@@ -55,8 +55,8 @@ export default function App() {
         <Hero />
         <Intro />
         <DayStory />
-        <FloorPlanExplorer />
         <Architecture />
+        <FloorPlanExplorer />
         <Aerial />
         <Location />
         <Practical />

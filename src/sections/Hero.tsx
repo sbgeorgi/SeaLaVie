@@ -21,7 +21,7 @@ export default function Hero() {
   );
 
   return (
-    <section id="top" ref={ref} aria-label="Sea La Vie" className="relative h-[100svh] min-h-[600px] overflow-hidden bg-forest-deep text-ivory">
+    <section id="top" ref={ref} aria-label="Sea La Vie" className="relative h-[100svh] min-h-[560px] overflow-hidden bg-forest-deep text-ivory md:min-h-[600px]">
       <div ref={media} className="absolute inset-0 will-change-transform">
         <div className="animate-hero-scale absolute inset-0">
           <img
@@ -37,12 +37,12 @@ export default function Hero() {
       <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-forest-deep/55 via-forest-deep/10 to-forest-deep/80" />
       <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-forest-deep/50 via-transparent to-transparent" />
 
-      <div ref={copy} className="relative flex h-full flex-col justify-end px-5 pb-10 md:px-10 md:pb-14">
+      <div ref={copy} className="relative flex h-full flex-col justify-end px-5 pb-9 pt-24 md:px-10 md:pb-14">
         <div className="mx-auto w-full max-w-[1600px]">
-          <p className="chapter animate-fade-in text-ivory/80 [animation-delay:600ms]">
+          <p className="chapter animate-fade-in text-[9px] tracking-[0.16em] text-ivory/80 [animation-delay:600ms] sm:text-[10.5px] sm:tracking-[0.28em]">
             <span className="text-ember">Iron Shore</span> &nbsp;·&nbsp; West End &nbsp;·&nbsp; Roatán, Honduras
           </p>
-          <h1 className="display mt-5 text-[22vw] text-ivory md:mt-6 md:text-[15vw] lg:text-[13.5vw]">
+          <h1 className="display mt-4 text-[clamp(68px,20vw,110px)] text-ivory md:mt-6 md:text-[15vw] lg:text-[13.5vw]">
             <span className="block overflow-hidden pb-[0.06em]">
               <span className="animate-line-in block [animation-delay:250ms]">Sea</span>
             </span>
@@ -50,16 +50,16 @@ export default function Hero() {
               <span className="animate-line-in block italic [animation-delay:420ms]">La Vie</span>
             </span>
           </h1>
-          <div className="mt-6 flex flex-col gap-6 md:mt-4 md:flex-row md:items-end md:justify-between">
+          <div className="mt-4 flex flex-col gap-5 md:mt-4 md:flex-row md:items-end md:justify-between">
             <p className="animate-fade-in max-w-sm text-[15px] leading-relaxed text-ivory/80 [animation-delay:900ms] md:text-base">
               An oceanfront residence of three suites, a pool between the house and the reef, and sunsets you watch from the patio.
             </p>
-            <div className="animate-fade-in flex items-center gap-6 [animation-delay:1100ms]">
-              <button onClick={() => gallery.open("exterior")} className="group chapter flex items-center text-[10px] text-ivory">
+            <div className="animate-fade-in flex max-w-full flex-wrap items-center gap-x-3 gap-y-3 [animation-delay:1100ms] md:gap-x-6">
+              <button onClick={() => gallery.open("exterior")} className="group chapter flex min-h-11 items-center text-[9px] text-ivory sm:text-[10px]">
                 <span className="lux-underline whitespace-nowrap">View 49 photographs</span>
                 <svg aria-hidden viewBox="0 0 12 12" className="arrow-diag ml-2 h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.2"><path d="M2 10 10 2M4 2h6v6" /></svg>
               </button>
-              <a href="#inquire" className="btn-lux chapter whitespace-nowrap rounded-full border border-ivory/50 px-6 py-3.5 text-[10px] text-ivory [--btn-fill:var(--color-ivory)] hover:text-forest">
+              <a href="#inquire" className="btn-lux chapter inline-flex min-h-11 items-center whitespace-nowrap rounded-full border border-ivory/50 px-4 py-3 text-[9px] text-ivory [--btn-fill:var(--color-ivory)] hover:text-forest sm:px-6 sm:text-[10px]">
                 Plan your stay
               </a>
             </div>

@@ -109,7 +109,7 @@ export default function Location() {
   const progress = useSectionProgress(section);
   const active = Math.min(4, Math.round(progress * 4));
   const stop = STOPS[active];
-  const finalOpacity = smooth(0.8, 0.91, progress);
+  const finalOpacity = smooth(0.86, 0.96, progress);
 
   useEffect(() => {
     const node = canvas.current;
@@ -124,16 +124,17 @@ export default function Location() {
     const node = section.current;
     if (!node) return;
     const top = node.getBoundingClientRect().top + window.scrollY;
-    scrollToY(top + (node.offsetHeight - window.innerHeight) * (index / 4));
+    const sceneHeight = (node.firstElementChild as HTMLElement | null)?.offsetHeight ?? window.innerHeight;
+    scrollToY(top + (node.offsetHeight - sceneHeight) * (index / 4));
   };
 
   return (
     <section id="location" ref={section} aria-labelledby="loc-title" className="relative bg-seaglass" style={{ height: mobile ? "480svh" : "520vh" }}>
       <div className="sticky top-0 h-[100svh] overflow-hidden">
-        <canvas ref={canvas} className="absolute inset-0 h-full w-full" role="img" aria-label={`Illustrated map journey: ${stop.name}`} />
+        <canvas ref={canvas} className="absolute inset-0 h-full w-full" style={{ opacity: 1 - finalOpacity }} role="img" aria-label={`Illustrated map journey: ${stop.name}`} />
         <div className="pointer-events-none absolute inset-0 hidden md:block" style={{ background: "linear-gradient(90deg, rgba(244,239,230,.97), rgba(244,239,230,.89) 27%, transparent 58%)" }} />
         <div className="pointer-events-none absolute inset-0 md:hidden" style={{ background: "linear-gradient(0deg, rgba(244,239,230,.7), transparent 70%)" }} />
-        <div className="pointer-events-none absolute inset-x-0 top-[8svh] h-[50svh] transition-opacity duration-700 md:inset-y-0 md:left-[38%] md:right-0 md:h-full" style={{ opacity: finalOpacity }} aria-hidden><SeaLaVieFinalMap /></div>
+        <div className="pointer-events-none absolute inset-x-0 top-[8svh] h-[50svh] md:inset-y-0 md:left-[38%] md:right-0 md:h-full" style={{ opacity: finalOpacity }} aria-hidden><SeaLaVieFinalMap /></div>
 
         <div className="pointer-events-none absolute right-5 top-20 hidden text-center text-forest/65 md:block" aria-hidden>
           <span className="chapter text-[9px]">N</span>
@@ -141,12 +142,16 @@ export default function Location() {
         </div>
 
         <div className="absolute inset-x-4 bottom-[7.5rem] max-w-md border border-forest/10 bg-ivory/95 p-5 text-forest shadow-[0_20px_50px_-35px_rgba(18,28,22,.6)] backdrop-blur-sm md:inset-x-auto md:bottom-auto md:left-[6vw] md:top-1/2 md:w-[34vw] md:max-w-[500px] md:-translate-y-1/2 md:border-0 md:bg-transparent md:p-0 md:shadow-none">
-          <Chapter n="IV">A Sense of Place</Chapter>
+          <Chapter n="VI">A Sense of Place</Chapter>
           <h2 id="loc-title" className="display mt-3 hidden text-[42px] md:block md:text-[58px] lg:text-[74px]">Not just an address.<br /><em>A little escape.</em></h2>
-          <div key={stop.number} className="animate-fade-in" aria-live="polite" aria-atomic="true">
-            <p className="chapter mt-4 text-[9px] text-ember md:mt-10">{stop.number}</p>
-            <h3 className="display mt-2 text-[37px] md:text-[48px]">{stop.title}</h3>
-            <p className="mt-3 max-w-sm text-[12px] leading-relaxed text-forest/70 md:mt-5 md:text-[14px]">{stop.copy}</p>
+          <div className="grid" aria-live="polite" aria-atomic="true">
+            {STOPS.map((item, index) => (
+              <div key={item.number} aria-hidden={active !== index} className="[grid-area:1/1] transition-[opacity,transform] duration-500 ease-[var(--ease-lux)]" style={{ opacity: active === index ? 1 : 0, transform: `translateY(${active === index ? 0 : 10}px)` }}>
+                <p className="chapter mt-4 text-[9px] text-ember md:mt-10">{item.number}</p>
+                <h3 className="display mt-2 text-[37px] md:text-[48px]">{item.title}</h3>
+                <p className="mt-3 max-w-sm text-[12px] leading-relaxed text-forest/70 md:mt-5 md:text-[14px]">{item.copy}</p>
+              </div>
+            ))}
           </div>
           <p className="chapter mt-4 hidden text-[9px] text-forest/45 md:block">16.3090° N / 86.5964° W · illustrative</p>
         </div>

@@ -29,7 +29,7 @@ export default function Services() {
         </div>
 
         <div className="px-5 py-28 md:px-12 md:py-40 lg:px-20">
-          <Chapter n="VI" light>
+          <Chapter n="VIII" light>
             Services
           </Chapter>
           <h2 id="svc-title" className="display mt-8 text-[54px] sm:text-7xl lg:text-[92px]">

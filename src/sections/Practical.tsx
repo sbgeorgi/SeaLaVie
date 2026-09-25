@@ -18,7 +18,7 @@ export default function Practical() {
       <div className="mx-auto grid max-w-[1500px] gap-16 lg:grid-cols-12">
         <div className="lg:col-span-4">
           <div className="lg:sticky lg:top-32">
-            <Chapter n="V">Practical Context</Chapter>
+            <Chapter n="VII">Practical Context</Chapter>
             <h2 id="amen-title" className="display mt-8 text-[54px] text-forest sm:text-7xl lg:text-[96px]">
               <MaskLines lines={["What the", <em key="e">house offers.</em>]} />
             </h2>

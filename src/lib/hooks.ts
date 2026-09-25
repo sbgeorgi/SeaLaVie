@@ -47,9 +47,13 @@ export function useSectionProgress(ref: RefObject<HTMLElement | null>, onFrame?:
       const el = ref.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      if (r.bottom < -vh || r.top > vh * 2) return;
-      const total = r.height - vh;
+      const viewport = window.innerHeight;
+      if (r.bottom < -viewport || r.top > viewport * 2) return;
+      // Sticky scenes are sized in svh. Mobile browser chrome can change
+      // innerHeight while scrolling, so use the scene's actual height.
+      const sticky = el.firstElementChild;
+      const sceneHeight = sticky instanceof HTMLElement && sticky.classList.contains("sticky") ? sticky.offsetHeight : viewport;
+      const total = r.height - sceneHeight;
       const v = total > 0 ? clamp(-r.top / total) : clamp(-r.top / r.height);
       if (Math.abs(v - last) > 0.0005) {
         last = v;
@@ -72,7 +76,7 @@ export function useSectionProgress(ref: RefObject<HTMLElement | null>, onFrame?:
   return p;
 }
 
-export function useInView<T extends Element>(opts: IntersectionObserverInit = { rootMargin: "0px 0px -12% 0px", threshold: 0.05 }, once = true) {
+export function useInView<T extends Element>(opts: IntersectionObserverInit = { rootMargin: "0px 0px 8% 0px", threshold: 0.01 }, once = true) {
   const ref = useRef<T>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {

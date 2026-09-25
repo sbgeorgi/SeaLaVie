@@ -116,7 +116,7 @@ export default function Nav() {
         aria-modal="true"
         aria-label="Menu"
         hidden={!open}
-        className="fixed inset-0 z-40 flex flex-col justify-between bg-forest-deep px-6 pb-10 pt-28 text-ivory lg:hidden"
+        className="fixed inset-0 z-40 flex flex-col justify-between overflow-y-auto bg-forest-deep px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-24 text-ivory lg:hidden"
       >
         <ul className="space-y-1">
           {[...links, { id: "inquire", label: "Inquire" }].map((l, i) => (
@@ -128,7 +128,7 @@ export default function Nav() {
                 style={{ animationDelay: `${80 + i * 60}ms` }}
               >
                 <span className="chapter w-6 text-[9px] text-ember">{String(i + 1).padStart(2, "0")}</span>
-                <span className="display text-[46px] leading-[1] sm:text-6xl">{l.label}</span>
+                <span className="display text-[clamp(34px,10vw,46px)] leading-[1] sm:text-6xl">{l.label}</span>
               </a>
             </li>
           ))}

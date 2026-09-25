@@ -113,7 +113,7 @@ export default function Rates() {
         <div className="mx-auto max-w-[1500px]">
           <div className="grid gap-8 md:grid-cols-12">
             <div className="md:col-span-7">
-              <Chapter n="VIII">Rates</Chapter>
+              <Chapter n="X">Rates</Chapter>
               <h2 id="rates-title" className="display mt-8 text-[54px] text-forest sm:text-7xl lg:text-[112px]">
                 <MaskLines lines={["Three ways", <em key="e">to stay.</em>]} />
               </h2>
@@ -144,7 +144,7 @@ export default function Rates() {
                     </div>
                     <h3 className="display mt-8 text-5xl">{t.name}</h3>
                     <p className={cn("mt-3 text-[13.5px] leading-relaxed", sel ? "text-ivory/70" : "text-forest/65")}>{t.blurb}</p>
-                    <p className="mt-8 flex items-baseline gap-2">
+                    <p className="mt-8 flex flex-wrap items-baseline gap-x-2 gap-y-0">
                       <span className="chapter text-[9px] opacity-60">from</span>
                       <span className="display text-6xl">{fmt(t.rate)}</span>
                       <span className="text-[12px] opacity-60">/ {t.unit}</span>
@@ -170,7 +170,7 @@ export default function Rates() {
       <section id="inquire" aria-labelledby="inq-title" className="bg-paper px-5 py-28 md:px-10 md:py-40">
         <div className="mx-auto grid max-w-[1500px] gap-16 lg:grid-cols-12">
           <div className="lg:col-span-6">
-            <Chapter n="IX">Inquire</Chapter>
+            <Chapter n="XI">Inquire</Chapter>
             <h2 id="inq-title" className="display mt-8 text-[54px] text-forest sm:text-7xl lg:text-[96px]">
               <MaskLines lines={["Compose", <em key="e">your stay.</em>]} />
             </h2>

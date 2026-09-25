@@ -1,7 +1,8 @@
-import { useState, type KeyboardEvent } from "react";
-import { bySection, type SectionKey } from "../data/photos";
+import { useEffect, useState, type KeyboardEvent } from "react";
+import { bySection, img, srcSet, type SectionKey } from "../data/photos";
 import { ROOMS } from "../three/VillaScene";
 import { ArrowLabel, Chapter, Photo, useGallery } from "../components/ui";
+import { useReducedMotion } from "../lib/hooks";
 import { cn } from "../utils/cn";
 
 type Place = { id: string; name: string; section: SectionKey; detail: string };
@@ -38,7 +39,7 @@ export default function FloorPlanExplorer() {
       <div className="mx-auto max-w-[1500px]">
         <div className="mb-10 grid gap-6 md:mb-16 md:grid-cols-12 md:items-end">
           <div className="md:col-span-8">
-            <Chapter n="II">The Floor Plan</Chapter>
+            <Chapter n="IV">The Floor Plan</Chapter>
             <h2 id="floor-plan-title" className="display mt-6 text-[52px] text-forest sm:text-7xl lg:text-[96px]">Find your place <em>in the home.</em></h2>
           </div>
           <p className="max-w-sm text-[14px] leading-relaxed text-forest/65 md:col-span-4">Choose a room on the plan or in the menu. Its photographs appear beside the layout; open any image to continue through the gallery.</p>
@@ -78,24 +79,66 @@ export default function FloorPlanExplorer() {
           </div>
 
           <div className="lg:col-span-5" aria-live="polite">
-            <div className="relative aspect-[4/3] overflow-hidden bg-forest/10 sm:aspect-[5/4] lg:aspect-[4/5]">
-              <button key={image.id} onClick={() => gallery.open(current.section, image.id)} className="group animate-fade-in absolute inset-0 block w-full" aria-label={`Open ${image.alt} in photo gallery`}>
-                <Photo id={image.id} alt={image.alt} sizes="(min-width: 1024px) 40vw, 100vw" className="absolute inset-0 h-full w-full" imgClassName="transition-transform duration-[1200ms] ease-[var(--ease-lux)] group-hover:scale-[1.04]" />
-                <span className="chapter absolute bottom-5 right-5 bg-paper/90 px-4 py-2 text-[9px] text-forest">View photograph ↗</span>
+            <div className="relative h-[52svh] min-h-[340px] overflow-hidden bg-forest-deep sm:h-[58svh] lg:h-[72svh]">
+              <CrossfadeRoomPhoto id={image.id} alt={image.alt} />
+              <div aria-hidden className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-t from-forest-deep/75 via-transparent to-forest-deep/10" />
+              <button onClick={() => gallery.open(current.section, image.id)} className="group absolute inset-0 z-[4] block w-full" aria-label={`Open ${image.alt} in photo gallery`}>
+                <span className="chapter absolute right-4 top-4 bg-paper/90 px-4 py-2.5 text-[9px] text-forest transition-colors group-hover:bg-paper">View photograph ↗</span>
               </button>
+              <div className="absolute inset-x-4 bottom-4 z-[5]" role="group" aria-label={`${current.name} image previews`}>
+                <p className="chapter mb-2 text-[9px] text-ivory/85" aria-live="polite">{String(photoIndex + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")} &nbsp;·&nbsp; Choose a view</p>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                  {photos.map((photo, i) => <button key={photo.id} onClick={() => setPhotoIndex(i)} aria-label={`Show ${photo.alt}`} aria-pressed={i === photoIndex} className={cn("relative h-12 w-12 shrink-0 overflow-hidden border-2 transition-[opacity,border-color,transform] duration-500 sm:h-14 sm:w-14", i === photoIndex ? "-translate-y-1 border-ivory opacity-100" : "border-ivory/45 opacity-75 hover:opacity-100")}><Photo id={photo.id} alt="" sizes="64px" className="absolute inset-0 h-full w-full" /></button>)}
+                </div>
+              </div>
             </div>
             <div className="mt-6 border-t border-forest/20 pt-5">
               <p className="chapter text-[9px] text-ember">Selected room / {String(PLACES.findIndex((p) => p.id === selected) + 1).padStart(2, "0")}</p>
               <h3 className="display mt-3 text-[52px] text-forest sm:text-[64px]">{current.name}</h3>
               <p className="mt-4 max-w-lg text-[14px] leading-relaxed text-forest/70">{current.detail}</p>
-              <div className="mt-6 flex flex-wrap gap-2" role="group" aria-label={`${current.name} image previews`}>
-                {photos.map((photo, i) => <button key={photo.id} onClick={() => setPhotoIndex(i)} aria-label={`Show ${photo.alt}`} aria-pressed={i === photoIndex} className={cn("h-14 w-14 overflow-hidden border-2 transition-opacity", i === photoIndex ? "border-ember opacity-100" : "border-transparent opacity-55 hover:opacity-100")}><Photo id={photo.id} alt="" sizes="64px" className="h-full w-full" /></button>)}
-              </div>
-              <button onClick={() => gallery.open(current.section, image.id)} className="group chapter mt-6 flex items-center text-[10px] text-forest"><ArrowLabel>Explore all {photos.length} photographs</ArrowLabel></button>
+              <button onClick={() => gallery.open(current.section, image.id)} className="group chapter mt-6 flex items-center border-t border-forest/15 pt-5 text-[10px] text-forest"><ArrowLabel>Explore all {photos.length} photographs</ArrowLabel></button>
             </div>
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function CrossfadeRoomPhoto({ id, alt }: { id: string; alt: string }) {
+  const [base, setBase] = useState(id);
+  const [incoming, setIncoming] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const reduced = useReducedMotion();
+  const sizes = "(min-width: 1024px) 40vw, 100vw";
+
+  useEffect(() => {
+    setIncoming(null);
+    setRevealed(false);
+    if (id === base) return;
+    if (reduced) { setBase(id); return; }
+    let cancelled = false;
+    const preload = new Image();
+    preload.sizes = sizes;
+    preload.srcset = srcSet(id);
+    preload.src = img(id, 1200);
+    const ready = () => { if (!cancelled && preload.naturalWidth) setIncoming(id); };
+    preload.onload = ready;
+    if (preload.complete) ready();
+    return () => { cancelled = true; preload.onload = null; };
+  }, [id, base, reduced]);
+
+  useEffect(() => {
+    if (!incoming || incoming !== id) return;
+    const frame = requestAnimationFrame(() => setRevealed(true));
+    const timer = window.setTimeout(() => { setBase(incoming); setIncoming(null); setRevealed(false); }, 750);
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+  }, [incoming, id]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <Photo id={base} alt={base === id ? alt : ""} sizes={sizes} className="absolute inset-0 h-full w-full" />
+      {incoming && <div className="absolute inset-0 transition-[clip-path] duration-[700ms] ease-[var(--ease-lux)]" style={{ clipPath: revealed ? "inset(0 0 0 0)" : "inset(0 100% 0 0)" }}><Photo id={incoming} alt={alt} sizes={sizes} eager className="absolute inset-0 h-full w-full" /></div>}
+    </div>
   );
 }

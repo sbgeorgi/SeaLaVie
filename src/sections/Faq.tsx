@@ -8,7 +8,7 @@ export default function Faq() {
     <section aria-labelledby="faq-title" className="bg-ivory px-5 py-28 md:px-10 md:py-40">
       <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-12">
         <div className="lg:col-span-4">
-          <Chapter n="X">Before you arrive</Chapter>
+          <Chapter n="XII">Before you arrive</Chapter>
           <h2 id="faq-title" className="display mt-8 text-[54px] text-forest sm:text-7xl">
             Good <em>to know.</em>
           </h2>

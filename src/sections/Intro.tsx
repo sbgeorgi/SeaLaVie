@@ -11,19 +11,19 @@ export default function Intro() {
   const p = useSectionProgress(ref);
   const words = TEXT.split(" ");
   return (
-    <section id="story" ref={ref} aria-labelledby="intro-title" className="relative bg-ivory" style={{ height: "210vh" }}>
+    <section id="story" ref={ref} aria-labelledby="intro-title" className="relative bg-ivory" style={{ height: "210svh" }}>
       <div className="sticky top-0 flex h-[100svh] flex-col justify-center px-5 md:px-10">
         <div className="mx-auto w-full max-w-[1400px]">
           <Chapter n="I">The Story</Chapter>
           <h2 id="intro-title" className="sr-only">
             A day at Sea La Vie
           </h2>
-          <p className="mt-8 max-w-[1200px] font-serif text-[30px] font-light leading-[1.12] tracking-[-0.02em] text-forest sm:text-5xl md:mt-12 lg:text-[64px]" aria-label={TEXT}>
+          <p className="mt-8 max-w-[1200px] font-serif text-[clamp(26px,7.6vw,38px)] font-light leading-[1.12] tracking-[-0.02em] text-forest sm:text-5xl md:mt-12 lg:text-[64px]" aria-label={TEXT}>
             {words.map((w, i) => {
-              const t = clamp((p * 1.35 - i / words.length) * 6);
+              const t = clamp((p * 1.55 - i / words.length) * 6);
               const em = ["Iron", "Shore.", "palapa", "sun"].includes(w);
               return (
-                <span key={i} aria-hidden className={em ? "italic" : undefined} style={{ opacity: 0.14 + t * 0.86, transition: "opacity .3s" }}>
+                <span key={i} aria-hidden className={em ? "italic" : undefined} style={{ opacity: 0.55 + t * 0.45, transition: "opacity .3s" }}>
                   {w}{" "}
                 </span>
               );
